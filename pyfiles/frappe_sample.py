@@ -54,9 +54,9 @@ def negative_sample(df):
     
     return negative_df
 
-if not os.path.exists('frappe_deepafm_all.csv'):
+if not os.path.exists('..data/frappe_deepafm_all.csv'):
     
-    frappe_df = pd.read_csv('frappe/frappe.csv', sep='\t')
+    frappe_df = pd.read_csv('../data/frappe/frappe.csv', sep='\t')
     
     columns_unqiue = {}
     for column in frappe_df.columns:

@@ -30,9 +30,9 @@ def negative_sample(df, columns_unqiue):
     
     return negative_df
 
-if not os.path.exists('movielens_all.csv'):
+if not os.path.exists('../data/movielens_all.csv'):
     
-    movielens_df = pd.read_csv('ml-20m/tags.csv', sep=',')
+    movielens_df = pd.read_csv('../data/ml-20m/tags.csv', sep=',')
     
     columns_unqiue = {}
     for column in movielens_df.columns:
