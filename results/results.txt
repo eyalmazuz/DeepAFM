@@ -1,0 +1,42 @@
+Frappe:
+    Params:
+        embedding size: 256
+        batch_size: 128
+        attention_factor: 16
+        rate: 0.3
+        epcohs: 5
+    
+    Models:
+        AFM:
+            Validation Loss 0.2338 Accuracy 0.9464 AUC 0.9877
+            Test Loss 0.2359 Accuracy 0.9444 AUC 0.9875
+        
+        DeepAFM:
+            Validation Loss 0.0595 Accuracy 0.9848 AUC 0.9940
+            Test Loss 0.0649 Accuracy 0.9834 AUC 0.9931
+        
+        DeepFM:
+            Validation Loss 0.005 Accuracy 0.9968 AUC 0.9981
+            Test Loss 0.0036 Accuracy 0.9981 AUC 0.9990
+            
+            
+MovieLens:
+    Params:
+        embedding size: 256
+        batch_size: 128
+        attention_factor: 16
+        rate: 0.3
+        epochs: 5
+        
+    Models:
+        AFM:
+            Validation Loss 0.6137 Accuracy 0.6727 AUC 0.7297
+            Test Loss 0.6136 Accuracy 0.6735 AUC 0.7270
+        
+        DeepAFM:
+            Validation Loss 0.3275 Accuracy 0.8803 AUC 0.9086
+            Test Loss 0.3283 Accuracy 0.8803 AUC 0.9074
+            
+        DeepFM:
+            Validation Loss 0.1007 Accuracy 0.9032 AUC 0.9444
+            Test Loss 0.0772 Accuracy 0.9345 AUC 0.9694
