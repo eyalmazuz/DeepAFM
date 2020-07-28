@@ -8,9 +8,10 @@ the train.py received command line arguments using the
 ```
 --flag value
 ```
-method.
+.
 
 the arguments it can receive are: 
+
   embedding_size: int - the embedding size for the sparse features, default is 256.
   
   epochs: int - number of training epochs to train the models, default is 5.
