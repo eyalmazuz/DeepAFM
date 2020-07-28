@@ -41,7 +41,9 @@ the arguments it can receive are:
   
   example running:
   ```sh
-  python3 train.py --embedding size 256 --epochs 10 --batch_sizer 1024 --attention_factor 64 --validation_size 0.3 --test_size 0.15 --learning_rate 0.001 --dropout 0.3 --regularization 0.5 --model DeepAFM  --save_path ../models/DeepAFM --dataset_path ../data/frappe_all.csv --dnn 512,256,256 --eval True
+  python3 train.py --embedding size 256 --epochs 10 --batch_sizer 1024 --attention_factor 64 \
+  --validation_size 0.3 --test_size 0.15 --learning_rate 0.001 --dropout 0.3 --regularization 0.5\
+  --model DeepAFM  --save_path ../models/DeepAFM --dataset_path ../data/frappe_all.csv --dnn 512,256,256 --eval True
   ```
   
   notice that default values are not mandatory and the only mandatory flag is the dataset_path
