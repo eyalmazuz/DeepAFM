@@ -5,9 +5,9 @@
 you can train either the DeepFM the AFM or the ADFM using the train.py in the pyfiles fodler
 
 the train.py received command line arguments using the 
-'''
+```
 --flag value
-'''
+```
 method.
 
 the arguments it can receive are: 
@@ -17,7 +17,7 @@ the arguments it can receive are:
   
   batch_size: int - size of the batch size in the epoch, default is 256.
  
-  attention_facotr: int - attention factor size for the AFM and DeepAFM models only, default value is 16.
+  attention_factor: int - attention factor size for the AFM and DeepAFM models only, default value is 16.
   
   validation_size: float - the size of the validation set from all the data range between (0, 1), default is 0.2.
   
@@ -37,7 +37,14 @@ the arguments it can receive are:
   
   dnn: comma seperate list - number of layers and nodes in the dnn componnet of the DeepAFM, default value is 128,128.
   
-  eval: boolean - if to the eval the model on the test set or not.
+  eval: boolean - if to the eval the model on the test set or not, default value is True.
+  
+  example running:
+  ```sh
+  python3 train.py --embedding size 256 --epochs 10 --batch_sizer 1024 --attention_factor 64 --validation_size 0.3 --test_size 0.15 --learning_rate 0.001 --dropout 0.3 --regularization 0.5 --model DeepAFM  --save_path ../models/DeepAFM --dataset_path ../data/frappe_all.csv --dnn 512,256,256 --eval True
+  ```
+  
+  notice that default values are not mandatory and the only mandatory flag is the dataset_path
   
 ## Sampling
 
@@ -53,3 +60,4 @@ the arguments it can receive are:
 ## Jupyter notebooks
   there are serveral jupyter notebooks located under the notebooks folder, these notebook have the same functionality as the train.py file
   but are seperate for each dataset and model so there are total of 6 notebooks. running the entire notebook will load the data, preprocess it, train the model and in the end evaluate on the test set.
+  Jupyter notebooks is needed in order to run the DeepCTR version of DeepFM
