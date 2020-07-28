@@ -30,6 +30,36 @@ class PairWiseInterationLayer(tf.keras.layers.Layer):
         output = tf.transpose(output, perm=[1, 0 ,2])
         
         return output
+
+class FMLayer(tf.keras.layers.Layer):
+    
+    
+    def __init__(self,):
+        
+        super(FMLayer, self).__init__()
+        
+        
+    def call(self, inputs):
+        """
+        receives an inputs tensor shape: [batch_size, features, embedding_size]
+        and returns a tensor shape: [batch_size, 1]
+        """
+        
+        features = tf.shape(inputs)[1]
+        
+        muls = []
+        for i in range(features):
+            for j in range(i, features):
+                if i != j:
+                    mul = tf.matmul(tf.expand_dims(inputs[:, i, :], axis=1), tf.expand_dims(inputs[:, j, :], axis=1), transpose_b=True)
+                    muls.append(tf.squeeze(mul))
+        
+
+        output = tf.stack(muls, axis=-1)
+
+        output = tf.math.reduce_sum(output, axis=-1, keepdims=True)
+
+        return output
     
 class AttentionLayer(tf.keras.layers.Layer):
     

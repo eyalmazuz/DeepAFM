@@ -17,7 +17,7 @@ from tqdm import tqdm
 from absl import app
 from absl import flags
 
-from Models import AFM, DeepAFM, ADFM
+from Models import AFM, DeepAFM, ADFM, DeepFM
 
 FLAGS = flags.FLAGS
 
@@ -107,6 +107,9 @@ def get_model(features, model_name, embedding_size, dnn_size, attention_factor, 
 
     elif model_name == "ADFM":
         model = ADFM.ADFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=regularization, dnn=dnn_size)
+    
+    elif model_name == "DeepFM":
+        model = DeepFM.DeepFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, rate=dropout, reg=regularization, dnn=dnn_size)
     
     return model
 
