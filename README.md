@@ -28,7 +28,7 @@ the arguments it can receive are:
   
   drouput: float - dropout rate for the dnn and the last layer in the afm, default value is 0.1.
   
-  regularization: float - l2 regularization value for the dnn layers in the models, default value is 0.1.
+  l2: float - l2 regularization value for the dnn layers in the models, default value is 0.1.
   
   model: string - the models you can choose to train from which are: AFM, DeepAFM.
   
