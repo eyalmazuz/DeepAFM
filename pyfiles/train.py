@@ -26,11 +26,11 @@ flags.DEFINE_integer('epochs', 5, 'number of epochs to train', lower_bound=1)
 flags.DEFINE_integer('batch_size', 256, 'batch size for the epoch', lower_bound=1)
 flags.DEFINE_integer('attention_factor', 16, 'model attention facotrs', lower_bound=1)
 
-flags.DEFINE_float('validation_size', 0.2, 'batch size for the epoch', lower_bound=0.001)
-flags.DEFINE_float('test_size', 0.1, 'model attention facotrs', lower_bound=0.001)
+flags.DEFINE_float('validation_size', 0.2, 'batch size for the epoch', lower_bound=0.01, upper_bound=0.99)
+flags.DEFINE_float('test_size', 0.1, 'model attention facotrs', lower_bound=0.01, upper_bound=0.99)
 flags.DEFINE_float('learning_rate', 0.1, 'model learning rate', lower_bound=0)
 flags.DEFINE_float('dropout', 0.1, 'dropout rate', lower_bound=0)
-flags.DEFINE_float('regularization', 0.1, 'regularization rate', lower_bound=0)
+flags.DEFINE_float('l2', 0.1, 'l2 regularization rate', lower_bound=0)
 
 flags.DEFINE_string('model', 'DeepAFM', 'model to train')
 flags.DEFINE_string('save_path', './', 'location to save the model')
@@ -47,13 +47,31 @@ if gpus:
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
     # Memory growth must be set before GPUs have been initialized
         print(e)
 
 
 def load_data(path):
+
+    """
+    Parameters:
+    -----------
+    
+    path: str
+        path to the dataset file provided by --dataset_path flag
+
+
+    Returns:
+    --------
+    df: pandas.DataFrame
+        dataframe what contains the features shape: [n_samples, n_features]
+
+    labels: pandas.DataFrame
+        pandas DataFrame that contains binary labels shape: [n_samples, 1]
+        
+
+    """
     df = pd.read_csv(path)
 
     labels = df['label']
@@ -62,12 +80,77 @@ def load_data(path):
     return df, labels
 
 def split_data(df, labels, validation_size, test_size):
+
+    """
+    Parameters:
+    -----------
+    df: pandas.DataFrame
+        padnas dataframe containing the features shape: [n_samples, n_features]
+
+    labels: pandas.DataFrame
+        pandas dataframe contraint the target labels shape: [n_samples, n_features]
+
+    validation_size: float
+        size of the validation set, ranges between 0 and 1 
+
+    test_size: float
+        size of the test set, ranges between 0 and 1
+    
+    Returns:
+    --------
+    x_train: pandas.DataFrame
+        subset of df that will be used as the training set
+
+    x_val: pandas.DataFrame
+        subset of the df the will be used for validation
+
+    x_test: pandas.DataFrame
+        subset of the df the will be used for test 
+
+    y_train: pandas.DataFrame
+        the labels for the training set
+
+    y_val: pandas.DataFrame
+        the labels for the validation set
+
+    y_test: pandas.DataFrame
+        the labels for the validation set
+
+    
+    """
+
     x_train, x_test, y_train, y_test = train_test_split(df, labels, test_size=test_size)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=validation_size)
 
     return (x_train, y_train), (x_val, y_val), (x_test, y_test)
 
 def preprocess_data(df):
+
+    """
+    Parameters:
+    -----------
+    df: pandas.DataFrame
+        the feature dataframe shape: [n_samples, n_features]
+    
+    
+    Returns:
+    --------
+    df: pandas.DataFrame
+        converted dataframe where each sparse feature was converted using label encoder
+        and each dense feature was scaled using standard scaler
+
+    features: dict [str -> int]
+        a dictionary that containt the amount of unique instances in each of the column
+        this dictionary is used to determine the embedding size of the model
+
+    sparse_columns: list[str]
+        this list contains all the sparse featrue names from the dataset
+
+    dense_columns: list[str]
+        this list containt all the dense feature names from the dataset
+    
+    
+    """
 
 
     sparse_columns = df.select_dtypes(include=['int64', 'object']).columns
@@ -90,6 +173,25 @@ def preprocess_data(df):
     return df, features, sparse_columns, dense_columns
 
 def loss_function(y_true, y_pred, loss_object):
+
+    """
+    Parameters:
+    -----------
+    y_true: list[float]
+        liss of the true labels for the batch, labels are from {0,1}. shape: [batch_size, 1]
+
+    y_pred: list[float]
+        prediction the model made for each instance in the batch ranges between (0,1). shape: [batch_size, 1]
+
+    loss_object: tf.keras.losses.Loss
+        tensorflow loss object to compute the loss. using the MSE
+    
+    Returns:
+    --------
+    rmse: float
+        rmse value of the loss form the model on the current batch
+
+    """
     
     loss = loss_object(y_true=y_true, y_pred=y_pred)
     
@@ -97,24 +199,89 @@ def loss_function(y_true, y_pred, loss_object):
     return rmse
 
 
-def get_model(features, model_name, embedding_size, dnn_size, attention_factor, regularization, dropout, sparse_columns, dense_columns):
+def get_model(features, model_name, embedding_size, dnn_size, attention_factor, l2_reg, dropout, sparse_columns, dense_columns):
+
+    """
+    Parameters:
+    -----------
+    features: dict[str -> int]
+        dictionary containt the amount of unique instance for each feature in the dataset
+
+    model_name: str
+        the of the model we will use to train
+
+    embedding_size: int
+        size of the embedding vectors for the model
+
+    dnn_size: list[int]
+        if model has a dnn component the list determine how many layers and how many nodes in each layer
+        eaxmple: [512,256,128] means the model will have 3 layers first layer with 512 nodes, second with 256 and third with 128.
+
+    attention_factor: int
+        size of the attention factor for model that use attention
+
+    l2_reg: float
+        how much l2 regularization to put on the embedding and dnn layers of the models
+
+    dropout: float
+        dropout rate for the last layer in the dnn and attention components
+
+    sparse_columns: list[str]
+        list of names of the sparse features in the dataset
+
+    dense_columns: list[str]
+        list of names of the sparse features in the dataset
+    
+    Returns:
+    --------
+    model: Tensorflow.keras.Model
+        a tensorflow model
+    
+
+    """
 
     if model_name == "AFM":
-        model = AFM.AFM(features, sparse_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=regularization)
+        model = AFM.AFM(features, sparse_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=l2_reg)
 
     elif model_name == "DeepAFM":
-        model = DeepAFM.DeepAFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=regularization, dnn=dnn_size)
+        model = DeepAFM.DeepAFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=l2_reg, dnn=dnn_size)
 
     elif model_name == "ADFM":
-        model = ADFM.ADFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=regularization, dnn=dnn_size)
+        model = ADFM.ADFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, attention_factor=attention_factor, rate=dropout, reg=l2_reg, dnn=dnn_size)
     
     elif model_name == "DeepFM":
-        model = DeepFM.DeepFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, rate=dropout, reg=regularization, dnn=dnn_size)
+        model = DeepFM.DeepFM(features, sparse_columns, dense_columns, embedding_size=embedding_size, rate=dropout, reg=l2_reg, dnn=dnn_size)
     
     return model
 
 
 def train_step(input, target, model, optimizer, loss_object):
+
+    """
+    Parameters:
+    -----------
+    input: pandas.Dataframe
+        input for the model to make prediction with, shape: [batch_size, n_features]
+
+    taget: pandas.DataFrame
+        target labels for the current batch, shape: [batch_size, 1]
+
+    model: tensorflow.keras.Model
+        model we are predicting with and training
+
+    optimizer: tensorflow.optimizers.Optimizer
+        optimizer for the backwards pass of the model to update the weights
+
+    loss_object: tensorflow.keras.losses.Loss
+        a metrics that says how bad the model performed on the current batch
+    
+    Returns:
+    --------
+    
+    predicions: list[float]
+        prediction the model made on the current batch ranges (0,1), shape: [batch_size, 1]
+    
+    """
 
     with tf.GradientTape() as tape:
         
@@ -128,7 +295,33 @@ def train_step(input, target, model, optimizer, loss_object):
     return predictions
 
 
-def train(x_train, x_val, y_train, y_val, features, model):
+def train(x_train, x_val, y_train, y_val, model):
+
+    """
+
+    this is the main training loop for the model
+    we training the model on batches that are sized by the batch_size flag
+    for number of epochs that is determined as well by the epochs flag
+
+    Parameters:
+    -----------
+     x_train: pandas.DataFrame
+        subset of df that will be used as the training set
+
+    x_val: pandas.DataFrame
+        subset of the df the will be used for validation
+
+    y_train: pandas.DataFrame
+        the labels for the training set
+
+    y_val: pandas.DataFrame
+        the labels for the validation set
+
+    model: tensorflow.keras.Model
+        model we are predicting with and training
+
+    
+    """
 
     EPOCHS = FLAGS.epochs
     BATCH_SIZE = FLAGS.batch_size
@@ -148,6 +341,9 @@ def train(x_train, x_val, y_train, y_val, features, model):
 
     if FLAGS.save_path: 
         checkpoint_path = FLAGS.save_path
+        
+        if not os.path.exists(checkpoint_path):
+            os.makedirs(checkpoint_path, exist_ok=True)
 
         ckpt = tf.train.Checkpoint(model=model,
                                 optimizer=optimizer)
@@ -198,12 +394,9 @@ def train(x_train, x_val, y_train, y_val, features, model):
             val_accuracy(y_true=y, y_pred=val_predictions)
             val_auc(y_true=y, y_pred=val_predictions)
 
-        print()
         print('Validation Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
         val_entropy.result(), val_accuracy.result(), val_auc.result()))
-        print()
 
-        
         if (epoch + 1) % 5 == 0:
             ckpt_save_path = ckpt_manager.save()
             print ('Saving checkpoint for epoch {} at {}'.format(epoch+1,
@@ -217,6 +410,24 @@ def train(x_train, x_val, y_train, y_val, features, model):
 
 
 def predict_test(model, x_test, y_test):
+
+    """
+
+    prediction method
+    here we evluate how well the model performs on unseen data using the test set
+    
+    Parameters:
+    -----------
+    x_test: pandas.DataFrame
+        subset of df that will be used as evaluation on unseen data
+
+    y_test: pandas.DataFrame
+        the labels for the test set
+
+    model: tensorflow.keras.Model
+        model we are predicting with
+
+    """
 
     BATCH_SIZE = FLAGS.batch_size
     STEPS = x_test.shape[0] // BATCH_SIZE
@@ -247,10 +458,10 @@ def main(argv):
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = split_data(df, labels, FLAGS.validation_size, FLAGS.test_size)
 
     model = get_model(features, model_name=FLAGS.model, embedding_size=FLAGS.embedding_size, dnn_size=FLAGS.dnn,
-                    attention_factor=FLAGS.attention_factor, regularization=FLAGS.regularization, dropout=FLAGS.dropout,
+                    attention_factor=FLAGS.attention_factor, l2_reg=FLAGS.l2, dropout=FLAGS.dropout,
                     sparse_columns=sparse_columns, dense_columns=dense_columns)
 
-    train(x_train, x_val, y_train, y_val, features, model)
+    train(x_train, x_val, y_train, y_val, model)
 
     if FLAGS.eval:
         predict_test(model, x_test, y_test)
