@@ -49,6 +49,12 @@ the arguments it can receive are:
   
   notice that default values are not mandatory and the only mandatory flag is the dataset_path
   
+  the dataset must be in the following format:
+    1. the file must be a csv file
+    2. the label must be a column i the data, the column name is "label"
+    3. all sparse features must be either object type or int64 type
+    4. all dense features must be float64
+    
 ## Sampling
 
   sampling can be done thought the py files in pyfiles/sampling folder, there are sampling files to sample for the movielens and frappe dataset.
