@@ -29,8 +29,8 @@ flags.DEFINE_integer('attention_factor', 16, 'model attention facotrs', lower_bo
 flags.DEFINE_float('validation_size', 0.2, 'batch size for the epoch', lower_bound=0.01, upper_bound=0.99)
 flags.DEFINE_float('test_size', 0.1, 'model attention facotrs', lower_bound=0.01, upper_bound=0.99)
 flags.DEFINE_float('learning_rate', 0.1, 'model learning rate', lower_bound=0)
-flags.DEFINE_float('dropout', 0.1, 'dropout rate', lower_bound=0)
-flags.DEFINE_float('l2', 0.1, 'l2 regularization rate', lower_bound=0)
+flags.DEFINE_float('dropout', 0.3, 'dropout rate', lower_bound=0)
+flags.DEFINE_float('l2', 0.2, 'l2 regularization rate', lower_bound=0)
 
 flags.DEFINE_string('model', 'DeepAFM', 'model to train')
 flags.DEFINE_string('save_path', './', 'location to save the model')
@@ -331,10 +331,12 @@ def train(x_train, x_val, y_train, y_val, model):
     loss_object = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adagrad(learning_rate=FLAGS.learning_rate)
 
+    train_rmse = tf.keras.metrics.RootMeanSquaredError(name='train rmse')
     train_entropy = tf.keras.metrics.BinaryCrossentropy(name='train_entropy')
     train_accuracy = tf.keras.metrics.BinaryAccuracy(name='train_accuracy')
     train_auc = tf.keras.metrics.AUC(name='train_auc')
 
+    val_rmse = tf.keras.metrics.RootMeanSquaredError(name='val rmse')
     val_entropy = tf.keras.metrics.BinaryCrossentropy(name='val_entropy')
     val_accuracy = tf.keras.metrics.BinaryAccuracy(name='val_accuracy')
     val_auc = tf.keras.metrics.AUC(name='val_auc')
@@ -358,11 +360,12 @@ def train(x_train, x_val, y_train, y_val, model):
     for epoch in range(EPOCHS):
         start = time.time()
 
+        train_rmse.reset_states()
         train_entropy.reset_states()
         train_accuracy.reset_states()
         train_auc.reset_states()
 
-        
+        val_rmse.reset_states()
         val_entropy.reset_states()
         val_accuracy.reset_states()
         val_auc.reset_states()
@@ -375,13 +378,14 @@ def train(x_train, x_val, y_train, y_val, model):
             
             predictions = train_step(sample, y, model, optimizer, loss_object)
 
+            train_rmse(y_true=y, y_pred=predictions)
             train_entropy(y_true=y, y_pred=predictions)
             train_accuracy(y_true=y, y_pred=predictions)
             train_auc(y_true=y, y_pred=predictions)
 
             if batch % 400 == 0:
-                print ('Epoch {} Batch {} Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
-                epoch + 1, batch, train_entropy.result(), train_accuracy.result(), train_auc.result()))
+                print ('Epoch {} Batch {} RMSE {:.4f}, Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
+                epoch + 1, batch, train_rmse.result(), train_entropy.result(), train_accuracy.result(), train_auc.result()))
 
         for batch in range(x_val.shape[0] // BATCH_SIZE):
 
@@ -390,12 +394,13 @@ def train(x_train, x_val, y_train, y_val, model):
             y = y_val[indexs].values.reshape((-1,1))
             val_predictions = model(sample, False)
 
+            val_rmse(y_true=y, y_pred=val_predictions)
             val_entropy(y_true=y, y_pred=val_predictions)
             val_accuracy(y_true=y, y_pred=val_predictions)
             val_auc(y_true=y, y_pred=val_predictions)
 
-        print('Validation Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
-        val_entropy.result(), val_accuracy.result(), val_auc.result()))
+        print('Validation RMSE {:.4f}, Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
+        val_rmse.result(), val_entropy.result(), val_accuracy.result(), val_auc.result()))
 
         if (epoch + 1) % 5 == 0:
             ckpt_save_path = ckpt_manager.save()
@@ -432,6 +437,7 @@ def predict_test(model, x_test, y_test):
     BATCH_SIZE = FLAGS.batch_size
     STEPS = x_test.shape[0] // BATCH_SIZE
 
+    test_rmse = tf.keras.metrics.RootMeanSquaredError(name='test rmse')
     test_entropy = tf.keras.metrics.BinaryCrossentropy(name='test_entropy')
     test_accuracy = tf.keras.metrics.BinaryAccuracy(name='test_accuracy')
     test_auc = tf.keras.metrics.AUC(name='test_auc')
@@ -443,12 +449,13 @@ def predict_test(model, x_test, y_test):
             y = y_test[indexs].values.reshape((-1,1))
             test_predictions = model(sample, False)
 
+            test_rmse(y_true=y, y_pred=test_predictions)
             test_entropy(y_true=y, y_pred=test_predictions)
             test_accuracy(y_true=y, y_pred=test_predictions)
             test_auc(y_true=y, y_pred=test_predictions)
 
-    print('Test Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
-        test_entropy.result(), test_accuracy.result(), test_auc.result()))
+    print('Test RMSE {:.4f}, Binray Crossentropy {:.4f} Accuracy {:.4f} AUC {:.4f}'.format(
+        test_rmse.result(), test_entropy.result(), test_accuracy.result(), test_auc.result()))
 
 def main(argv):
   
