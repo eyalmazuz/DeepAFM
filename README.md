@@ -10,6 +10,9 @@ the train.py received command line arguments using the
 ```
 .
 
+
+### Arguments
+
 the arguments it can receive are: 
 
   embedding_size: int - the embedding size for the sparse features, default is 256.
@@ -49,6 +52,8 @@ the arguments it can receive are:
   
   notice that default values are not mandatory and the only mandatory flag is the dataset_path
   
+  
+  ### Data format
   the dataset must be in the following format:
   
    1. the file must be a csv file
